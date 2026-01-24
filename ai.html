@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Data Entry</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<!-- File reading libs ONLY -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+*{box-sizing:border-box;font-family:Inter}
+body{
+ margin:0;
+ background:linear-gradient(135deg,#020617,#0f172a);
+ color:#e5e7eb;
+}
+.container{max-width:1200px;margin:auto;padding:24px}
+h1{margin-bottom:10px}
+.card{
+ background:rgba(255,255,255,.08);
+ border-radius:18px;
+ padding:20px;
+ margin-bottom:20px;
+}
+label{font-weight:600;display:block;margin-bottom:6px}
+textarea{
+ width:100%;height:340px;
+ padding:16px;border-radius:14px;
+ border:none;font-size:16px;
+}
+input[type=file]{margin-bottom:10px}
+button{
+ padding:10px 16px;border:none;
+ border-radius:10px;font-weight:600;
+ cursor:pointer;margin:4px;
+}
+.primary{background:#22d3ee;color:#000}
+.secondary{background:#6366f1;color:#fff}
+.warn{color:#facc15;font-size:14px}
+.badge{
+ display:inline-block;
+ background:#334155;
+ padding:4px 8px;
+ border-radius:8px;
+ margin:2px;font-size:12px
+}
+.history-item{
+ cursor:pointer;
+ padding:6px;border-radius:8px
+}
+.history-item:hover{background:#1e293b}
+table{
+ width:100%;border-collapse:collapse;margin-top:10px
+}
+th,td{
+ padding:10px;border-bottom:1px solid rgba(255,255,255,.15)
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>AI Data Entry – Automated Data Worker</h1>
+
+<div class="card">
+<label>📂 Upload text / notes / message / PDF / Word</label>
+<input type="file" id="fileInput" accept=".txt,.pdf,.docx">
+
+<label>Enter or paste input</label>
+<textarea id="input"></textarea>
+
+<button class="primary" onclick="runAnalysis()">Analyze</button>
+<button class="secondary" onclick="clearAll()">Clear</button>
+<button class="secondary" onclick="exportExcel()">Export Excel</button>
+</div>
+
+<div class="card">
+<h3> Extracted Data:</h3>
+<div id="conflicts" class="warn"></div>
+<table>
+<thead><tr><th>Field</th><th>Values</th></tr></thead>
+<tbody id="result"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h3>➕ Custom Fields</h3>
+<input id="customField" placeholder="Field name">
+<input id="customValue" placeholder="Value">
+<button onclick="addCustom()">Add</button>
+<div id="customList"></div>
+</div>
+
+<div class="card">
+<h3>🕘 Last 10 Analysis</h3>
+<div id="history"></div>
+</div>
+
+</div>
+
+<script>
+/* ===== FILE INPUT LAYER (NEW – SAFE) ===== */
+fileInput.onchange = async function(){
+ const file=this.files[0];
+ if(!file) return;
+ const ext=file.name.split(".").pop().toLowerCase();
+
+ if(ext==="txt"){
+   input.value=await file.text();
+ }
+
+ if(ext==="pdf"){
+   const r=new FileReader();
+   r.onload=async()=>{
+     const pdf=await pdfjsLib.getDocument({data:r.result}).promise;
+     let t="";
+     for(let i=1;i<=pdf.numPages;i++){
+       const p=await pdf.getPage(i);
+       const c=await p.getTextContent();
+       t+=c.items.map(x=>x.str).join(" ")+" ";
+     }
+     input.value=t;
+   };
+   r.readAsArrayBuffer(file);
+ }
+
+ if(ext==="docx"){
+   const r=new FileReader();
+   r.onload=()=>{
+     mammoth.extractRawText({arrayBuffer:r.result})
+     .then(x=>input.value=x.value);
+   };
+   r.readAsArrayBuffer(file);
+ }
+};
+
+/* ===== AI LOGIC (UNCHANGED) ===== */
+let data={}, used=new Set();
+
+function add(field,value){
+ value=value.trim();
+ if(!value || used.has(field+value)) return;
+ data[field]=data[field]||[];
+ data[field].push(value);
+ used.add(field+value);
+}
+
+function analyze(){
+ data={}; used.clear();
+ let t=input.value.toLowerCase();
+
+ let nameBlock=t.match(/my name is ([a-z ,]+)/);
+ if(nameBlock){ nameBlock[1].split(",").forEach(n=>add("Name",n)); }
+
+ let refBlock=t.match(/reference name is ([a-z ,]+)/);
+ if(refBlock){ refBlock[1].split(",").forEach(n=>add("Reference Name",n)); }
+
+ t.match(/\b(\d{1,2})\s*years\b/g)
+ ?.forEach(v=>add("Age",v.match(/\d+/)[0]));
+
+ t.match(/\bmale\b|\bfemale\b/g)?.forEach(v=>add("Gender",v));
+ t.match(/\b\d{10}\b/g)?.forEach(v=>add("Phone",v));
+
+ let alt=t.match(/alternate phone.*?(\d{10})/);
+ if(alt) add("Alternate Phone",alt[1]);
+
+ t.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/g)
+ ?.forEach(v=>add("Email",v));
+
+ let addr=t.match(/(live at|address is|residing at)\s([^\.]+)/);
+ if(addr) add("Address",addr[2]);
+
+ if(t.includes("chennai")) add("City","chennai");
+ if(t.includes("tamil nadu")) add("State","tamil nadu");
+ if(t.includes("india")) add("Country","india");
+
+ t.match(/(pincode|pin code)\s*(\d{6})/g)
+ ?.forEach(v=>add("Pincode",v.match(/\d{6}/)[0]));
+
+ t.match(/salary\s(\d{4,})/g)
+ ?.forEach(v=>add("Salary",v.match(/\d+/)[0]));
+
+ t.match(/amount.*?(\d{3,})/g)
+ ?.forEach(v=>add("Amount",v.match(/\d+/)[0]));
+}
+/* ===== END AI LOGIC ===== */
+
+function runAnalysis(){
+ analyze();
+ render();
+ detectConflicts();
+ saveHistory();
+}
+
+function render(){
+ result.innerHTML="";
+ Object.keys(data).forEach(f=>{
+  result.innerHTML+=`<tr><td>${f}</td><td>${data[f].join(", ")}</td></tr>`;
+ });
+}
+
+function detectConflicts(){
+ conflicts.innerHTML="";
+ if(data["Salary"] && data["Amount"])
+  conflicts.innerHTML="⚠ Possible conflict: Salary & Amount both detected";
+}
+
+function addCustom(){
+ let f=customField.value.trim();
+ let v=customValue.value.trim();
+ if(!f||!v) return;
+ data[f]=data[f]||[];
+ data[f].push(v);
+ render();
+ customList.innerHTML+=`<span class="badge">${f}: ${v}</span>`;
+}
+
+function saveHistory(){
+ let h=JSON.parse(localStorage.getItem("ai_history")||"[]");
+ h.unshift({text:input.value,time:new Date().toLocaleString()});
+ h=h.slice(0,10);
+ localStorage.setItem("ai_history",JSON.stringify(h));
+ loadHistory();
+}
+
+function loadHistory(){
+ let h=JSON.parse(localStorage.getItem("ai_history")||"[]");
+ history.innerHTML="";
+ h.forEach(i=>{
+  history.innerHTML+=`<div class="history-item" onclick="input.value=\`${i.text}\`">
+  ${i.time}</div>`;
+ });
+}
+
+function exportExcel(){
+ let rows=[];
+ Object.keys(data).forEach(f=>{
+  data[f].forEach(v=>rows.push({Field:f,Value:v}));
+ });
+ let wb=XLSX.utils.book_new();
+ let ws=XLSX.utils.json_to_sheet(rows);
+ XLSX.utils.book_append_sheet(wb,ws,"AI Data");
+ XLSX.writeFile(wb,"AI_Data.xlsx");
+}
+
+function clearAll(){
+ input.value="";
+ result.innerHTML="";
+}
+
+input.value=localStorage.getItem("autosave")||"";
+input.oninput=()=>localStorage.setItem("autosave",input.value);
+loadHistory();
+</script>
+
+</body>
+</html>
