@@ -831,4 +831,189 @@ function runAnalysis(){
  ?.forEach(v=>add("Salary",v.match(/\d+/)[0]));
 
  render();
-                            
+ detectConflicts();
+ saveHistory();
+
+
+function render(){
+ let r=document.getElementById("result");
+ r.innerHTML="";
+ Object.keys(data).forEach(f=>{
+   let tr=document.createElement("tr");
+   tr.innerHTML=`<td>${f}</td><td>${data[f].join(", ")}</td>`;
+   r.appendChild(tr);
+ });
+}
+
+function detectConflicts(){
+ conflicts.innerHTML="";
+ if(data["Salary"] && data["Amount"])
+  conflicts.innerHTML="⚠ Possible conflict: Salary & Amount both detected";
+}
+
+function addCustom(){
+ let f=customField.value.trim();
+ let v=customValue.value.trim();
+ if(!f||!v) return;
+ data[f]=data[f]||[];
+ data[f].push(v);
+ render();
+ customList.innerHTML+=`<span class="badge">${f}: ${v}</span>`;
+}
+
+
+
+function getUsers(){
+ return JSON.parse(localStorage.getItem("ai_users")||"[]");
+}
+function saveUsers(users){
+ localStorage.setItem("ai_users",JSON.stringify(users));
+}
+
+
+function saveHistory(){
+ let h=JSON.parse(localStorage.getItem("ai_history")||"[]");
+ h.unshift({text:input.value,time:new Date().toLocaleString()});
+ h=h.slice(0,10);
+ localStorage.setItem("ai_history",JSON.stringify(h));
+ loadHistory();
+}
+
+function loadHistory(){
+ let h=JSON.parse(localStorage.getItem("ai_history")||"[]");
+ history.innerHTML="";
+ h.forEach(i=>{
+  history.innerHTML+=`<div class="history-item" onclick="input.value=\`${i.text}\`">
+  ${i.time}</div>`;
+ });
+}
+
+function exportExcel(){
+ let rows=[];
+ Object.keys(data).forEach(f=>{
+  data[f].forEach(v=>rows.push({Field:f,Value:v}));
+ });
+ let wb=XLSX.utils.book_new();
+ let ws=XLSX.utils.json_to_sheet(rows);
+ XLSX.utils.book_append_sheet(wb,ws,"AI Data");
+ XLSX.writeFile(wb,"AI_Data.xlsx");
+}
+
+function clearAll(){
+ input.value="";
+ result.innerHTML="";
+}
+
+input.value=localStorage.getItem("autosave")||"";
+input.oninput=()=>localStorage.setItem("autosave",input.value);
+loadHistory();
+
+
+/* ================= DATABASE EXTRACTION LAYER (ADD-ON) ================= */
+
+/*
+ This layer:
+ - Reads uploaded file text
+ - Detects structured patterns
+ - Extracts DB-style data
+ - Pushes into existing table display
+ - DOES NOT touch existing AI logic
+*/
+
+function extractDatabaseFromText(rawText){
+  let dbData = {};
+
+  let lines = rawText.split(/\n+/);
+
+  lines.forEach(line=>{
+    line = line.trim();
+    if(!line) return;
+
+    /* Key : Value */
+    if(line.includes(":")){
+      let parts = line.split(":");
+      let key = parts.shift().trim();
+      let value = parts.join(":").trim();
+      if(key && value){
+        dbData[key] = dbData[key] || [];
+        dbData[key].push(value);
+      }
+    }
+
+    /* Key = Value */
+    if(line.includes("=")){
+      let parts = line.split("=");
+      let key = parts.shift().trim();
+      let value = parts.join("=").trim();
+      if(key && value){
+        dbData[key] = dbData[key] || [];
+        dbData[key].push(value);
+      }
+    }
+
+    /* CSV pattern */
+    if(line.includes(",") && line.split(",").length >= 3){
+      let parts = line.split(",").map(x=>x.trim());
+      parts.forEach((v,i)=>{
+        let key = "Column_" + (i+1);
+        dbData[key] = dbData[key] || [];
+        dbData[key].push(v);
+      });
+    }
+
+    /* Tabular pattern */
+    if(line.includes("\t")){
+      let parts = line.split("\t").map(x=>x.trim());
+      parts.forEach((v,i)=>{
+        let key = "Field_" + (i+1);
+        dbData[key] = dbData[key] || [];
+        dbData[key].push(v);
+      });
+    }
+  });
+
+  return dbData;
+}
+
+
+/* ===== AUTO HOOK INTO FILE INPUT ===== */
+const originalFileHandler = fileInput.onchange;
+
+fileInput.onchange = async function(){
+  if(originalFileHandler) await originalFileHandler.call(this);
+
+  // after original file read
+  setTimeout(()=>{
+    if(input.value && input.value.length > 20){
+      let db = extractDatabaseFromText(input.value);
+
+      // inject into existing data object safely
+      if(typeof data === "object"){
+        Object.keys(db).forEach(k=>{
+          data[k] = data[k] || [];
+          db[k].forEach(v=>data[k].push(v));
+        });
+
+        // render using existing renderer
+        if(typeof render === "function"){
+          render();
+        }
+      }
+    }
+  },300);
+};
+
+/* ================= END DATABASE EXTRACTION LAYER ================= */
+
+</script>
+
+<div class="kd-watermark">
+  Powered by KD
+</div>
+
+<div class="copyright-text">
+  © 2026 KD AI Data Entry Application. All rights reserved.
+</div>
+
+</body>
+</html>
