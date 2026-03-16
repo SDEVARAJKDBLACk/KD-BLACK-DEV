@@ -1,963 +1,347 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>AI Data Entry System</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-
-<!-- File reading libs ONLY -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-<style>
-*{box-sizing:border-box;font-family:Inter,sans-serif}
-
-/* ===== BODY ===== */
-body{
- margin:0;
- min-height:100vh;
- background:linear-gradient(135deg,#020617,#0f172a,#020617);
- color:#e5e7eb;
-}
-
-/* ================= AUTH UI ================= */
-.auth-wrapper{
- width:100%;
- max-width:420px;
- padding:20px;
- margin:auto;
- min-height:100vh;
- display:flex;
- align-items:center;
- justify-content:center;
-}
-
-.auth-card{
- background:rgba(255,255,255,0.08);
- backdrop-filter:blur(14px);
- border-radius:20px;
- padding:36px 32px;
- box-shadow:0 20px 40px rgba(0,0,0,.6);
- animation:fadeIn .6s ease;
- width:100%;
-}
-
-.auth-header{text-align:center;margin-bottom:24px}
-.logo{
- width:70px;height:70px;border-radius:18px;
- background:linear-gradient(135deg,#22d3ee,#6366f1);
- display:flex;align-items:center;justify-content:center;
- font-weight:800;font-size:26px;color:#020617;
- margin:0 auto 14px;
- box-shadow:0 0 20px rgba(99,102,241,.6);
-}
-.auth-header h2{margin:0;font-size:22px}
-.auth-header p{margin-top:6px;font-size:13px;color:#94a3b8}
-
-.form-group{margin-top:16px}
-.form-group label{display:block;font-size:13px;margin-bottom:6px;color:#cbd5f5}
-
-.input-box{
- display:flex;align-items:center;
- background:rgba(255,255,255,.08);
- border-radius:12px;padding:0 12px;
- border:1px solid rgba(255,255,255,.1);
-}
-.input-box input{
- flex:1;background:transparent;border:none;outline:none;
- padding:14px 8px;color:#fff;font-size:14px;
-}
-
-.auth-btn{
- width:100%;margin-top:20px;padding:14px;
- border:none;border-radius:12px;
- background:linear-gradient(135deg,#22d3ee,#6366f1);
- color:#020617;font-weight:700;font-size:15px;
- cursor:pointer;transition:.3s;
-}
-.auth-btn:hover{transform:translateY(-2px)}
-
-.switch{
- text-align:center;margin-top:18px;font-size:13px;color:#94a3b8;
-}
-.switch span{
- color:#22d3ee;cursor:pointer;font-weight:600;
-}
-
-.hidden{display:none}
-
-.msg{
- text-align:center;margin-top:10px;font-size:13px;
-}
-
-@keyframes fadeIn{
- from{opacity:0;transform:translateY(20px)}
- to{opacity:1;transform:translateY(0)}
-}
-
-/* ================= APP UI ================= */
-
-#appPage{display:none}
-
-/* ===== TOP BAR ===== */
-.topbar{
- display:flex;
- justify-content:space-between;
- align-items:center;
- padding:12px 24px;
- background:rgba(0,0,0,.45);
- backdrop-filter:blur(10px);
- border-bottom:1px solid rgba(255,255,255,.08);
-}
-
-.logo-app{
- font-weight:800;
- font-size:18px;
- color:#22d3ee;
-}
-
-/* ===== PROFILE ICON SYSTEM ===== */
-.profile-area{
- position:relative;
-}
-
-.profile-icon{
- width:42px;
- height:42px;
- border-radius:50%;
- background:linear-gradient(135deg,#22d3ee,#6366f1);
- display:flex;
- align-items:center;
- justify-content:center;
- font-weight:800;
- color:#020617;
- cursor:pointer;
- user-select:none;
- box-shadow:0 0 12px rgba(99,102,241,.6);
-}
-
-.profile-dropdown{
- position:absolute;
- right:0;
- top:55px;
- background:rgba(15,23,42,.95);
- backdrop-filter:blur(12px);
- border-radius:14px;
- padding:12px;
- min-width:220px;
- box-shadow:0 10px 30px rgba(0,0,0,.6);
- border:1px solid rgba(255,255,255,.08);
- z-index:999;
-}
-
-.profile-dropdown.hidden{display:none}
-
-.pd-name{
- font-weight:700;
- font-size:14px;
-}
-
-.pd-email{
- font-size:12px;
- color:#94a3b8;
- margin-top:2px;
- word-break:break-all;
-}
-
-.pd-line{
- height:1px;
- background:rgba(255,255,255,.1);
- margin:10px 0;
-}
-
-.pd-logout{
- text-align:center;
- padding:8px;
- border-radius:8px;
- cursor:pointer;
- background:#ef4444;
- color:white;
- font-weight:600;
- transition:.2s;
-}
-.pd-logout:hover{background:#dc2626}
-
-/* ===== AI APP CSS (UNCHANGED) ===== */
-.container{max-width:1200px;margin:auto;padding:24px}
-h1{margin-bottom:10px}
-.card{
- background:rgba(255,255,255,.08);
- border-radius:18px;
- padding:20px;
- margin-bottom:20px;
-}
-label{font-weight:600;display:block;margin-bottom:6px}
-textarea{
- width:100%;height:340px;
- padding:16px;border-radius:14px;
- border:none;font-size:16px;
-}
-input[type=file]{margin-bottom:10px}
-button{
- padding:10px 16px;border:none;
- border-radius:10px;font-weight:600;
- cursor:pointer;margin:4px;
-}
-.primary{background:#22d3ee;color:#000}
-.secondary{background:#6366f1;color:#fff}
-.warn{color:#facc15;font-size:14px}
-.badge{
- display:inline-block;
- background:#334155;
- padding:4px 8px;
- border-radius:8px;
- margin:2px;font-size:12px
-}
-.history-item{
- cursor:pointer;
- padding:6px;border-radius:8px
-}
-.history-item:hover{background:#1e293b}
-table{
- widtoryth:100%;border-collapse:collapse;margin-top:10px
-}
-th,td{
- padding:10px;border-bottom:1px solid rgba(255,255,255,.15)
-}
-
-
-/* ===== WATERMARK ===== */
-.kd-watermark{
- position:fixed;
- bottom:12px;
- left:15px;
- font-size:12px;
- color:rgba(255,255,255,.4);
- letter-spacing:1px;
- pointer-events:none;
-}
-
-/* ===== COPYRIGHT ===== */
-.copyright-text{
- position:fixed;
- bottom:12px;
- left:50%;
- transform:translateX(-50%);
- font-size:12px;
- color:rgba(255,255,255,.5);
- letter-spacing:.5px;
- pointer-events:none;
-}
-.history-section{
- margin-top:30px;
- padding:15px;
- background:#0f172a;
- border-radius:12px;
- border:1px solid #1f2937;
-}
-
-.history-section h3{
- margin-bottom:15px;
- font-size:16px;
-}
-
-.history-card{
- padding:10px;
- margin-bottom:10px;
- background:#111827;
- border-radius:8px;
- cursor:pointer;
- border:1px solid #1f2937;
- transition:.2s;
-}
-
-.history-card:hover{
- background:#1f2937;
-}
-
-.history-time{
- font-size:11px;
- color:#9ca3af;
-}
-
-.history-preview{
- font-size:12px;
- margin-top:4px;
-}
-
-</style>
-</head>
-
-<body>
-
-<!-- ================= AUTH PAGE ================= -->
-<div id="authPage" class="auth-wrapper">
- <div class="auth-card">
-
-  <div class="auth-header">
-   <div class="logo">AI</div>
-   <h2>AI Data Entry System</h2>
-   <p>Secure Access Portal</p>
-  </div>
-
-  <!-- LOGIN -->
-  <div id="loginForm">
-   <div class="form-group">
-    <label>Email</label>
-    <div class="input-box">
-     <input type="email" id="loginEmail" placeholder="Enter email">
-    </div>
-   </div>
-
-   <div class="form-group">
-    <label>Password</label>
-    <div class="input-box">
-     <input type="password" id="loginPassword" placeholder="Enter password">
-    </div>
-   </div>
-
-   <button class="auth-btn" onclick="login()">Login</button>
-
-   <div class="msg" id="loginMsg"></div>
-
-   <div class="switch">
-    New user? <span onclick="showRegister()">Create account</span>
-   </div>
-  </div>
-
-  <!-- REGISTER -->
-  <div id="registerForm" class="hidden">
-   <div class="form-group">
-    <label>Full Name</label>
-    <div class="input-box">
-     <input type="text" id="regName" placeholder="Full name">
-    </div>
-   </div>
-
-   <div class="form-group">
-    <label>Email</label>
-    <div class="input-box">
-     <input type="email" id="regEmail" placeholder="Email">
-    </div>
-   </div>
-
-   <div class="form-group">
-    <label>Password</label>
-    <div class="input-box">
-     <input type="password" id="regPassword" placeholder="Password">
-    </div>
-   </div>
-
-   <div class="form-group">
-    <label>Confirm Password</label>
-    <div class="input-box">
-     <input type="password" id="regConfirm" placeholder="Confirm password">
-    </div>
-   </div>
-
-   <button class="auth-btn" onclick="register()">Create Account</button>
-
-   <div class="msg" id="regMsg"></div>
-
-   <div class="switch">
-    Already have account? <span onclick="showLogin()">Login</span>
-   </div>
-  </div>
-
- </div>
-</div>
-
-
-
-<!-- ================= APP PAGE ================= -->
-<div id="appPage">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Data Entry | Pro System</title>
     
-<!-- TOP BAR -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: radial-gradient(circle at top left, #1e293b, #020617);
+            color: #f8fafc;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
 
-<div class="topbar">
-  <div class="logo-app">AI Data Entry</div>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+        }
 
-  <div class="profile-area">
-    <div class="profile-icon" id="profileIcon" onclick="toggleProfile()">U</div>
+        .apple-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            color: white;
+            outline: none;
+            transition: all 0.3s;
+        }
 
-    <div class="profile-dropdown hidden" id="profileDropdown">
-      <div class="pd-name" id="pdName"></div>
-      <div class="pd-email" id="pdEmail"></div>
-      <div class="pd-line"></div>
-      <div class="pd-logout" onclick="logout()">Logout</div>
+        .apple-input:focus { border-color: #22d3ee; background: rgba(0,0,0,0.4); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #22d3ee, #0ea5e9);
+            color: #000; font-weight: 700;
+            border-radius: 14px; transition: all 0.3s;
+        }
+
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(34, 211, 238, 0.4); }
+
+        .hidden { display: none; }
+
+        .profile-dropdown {
+            position: absolute; top: 60px; right: 0;
+            width: 220px; background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <div id="authPage" class="min-h-screen flex items-center justify-center">
+        <div class="glass-card p-8 w-full max-w-md shadow-2xl">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-cyan-400 rounded-2xl mx-auto flex items-center justify-center mb-4 text-black font-bold text-2xl">AI</div>
+                <h2 id="authTitle" class="text-2xl font-bold">Secure Access</h2>
+                <p id="authSub" class="text-slate-400 text-sm mt-1">AI Data Entry Management System</p>
+            </div>
+
+            <div class="space-y-4">
+                <div id="regFields" class="hidden">
+                    <input type="text" id="regName" class="apple-input w-full p-3" placeholder="Full Name">
+                </div>
+                <input type="email" id="authEmail" class="apple-input w-full p-3" placeholder="Email Address">
+                <input type="password" id="authPass" class="apple-input w-full p-3" placeholder="Password">
+                
+                <button onclick="handleAuth()" id="authBtn" class="btn-primary w-full py-4 mt-2">Sign In</button>
+                
+                <p class="text-center text-xs text-slate-500 mt-4">
+                    <span id="authMsg">New user?</span>
+                    <button onclick="toggleAuth()" id="authToggle" class="text-cyan-400 font-bold ml-1">Create Account</button>
+                </p>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
 
-<!-- ===== AI DATA ENTRY APP ===== -->
-
-
-<div class="container">
-
-<h1>AI Data Entry – Automated Data Worker</h1>
-
-<div class="card">
-<label>📂 Upload text / notes / message / PDF / Word</label>
-<input type="file" id="fileInput" accept=".txt,.pdf,.docx">
-
-<label>Enter or paste input</label>
-<textarea id="input"></textarea>
-
-<button class="primary" onclick="runAnalysis()">Analyze</button>
-<button class="secondary" onclick="clearAll()">Clear</button>
-<button class="secondary" onclick="exportExcel()">Export Excel</button>
-</div>
-
-<div class="card">
-<h3> Extracted Data:</h3>
-<div id="conflicts" class="warn"></div>
-<table>
-<thead><tr><th>Field</th><th>Values</th></tr></thead>
-<tbody id="result"></tbody>
-</table>
-</div>
-
-<div class="card">
-<h3>➕ Custom Fields</h3>
-<input id="customField" placeholder="Field name">
-<input id="customValue" placeholder="Value">
-<button onclick="addCustom()">Add</button>
-<div id="customList"></div>
-</div>
-
-<div class="history-section">
-   <h3>Last Analysis History</h3>
-   <div id="analysisHistory"></div>
-</div>
-
-</div>
-</div>
-
-<script>
-
-/* ================= STORAGE
-
-/* ================= UI SWITCH ================= */
-function showRegister(){
- document.getElementById("loginForm").classList.add("hidden");
- document.getElementById("registerForm").classList.remove("hidden");
-}
-function showLogin(){
- document.getElementById("registerForm").classList.add("hidden");
- document.getElementById("loginForm").classList.remove("hidden");
-}
-
-/* ================= REGISTER ================= */
-function register(){
- const name=document.getElementById("regName").value.trim();
- const email=document.getElementById("regEmail").value.trim();
- const pass=document.getElementById("regPassword").value;
- const confirm=document.getElementById("regConfirm").value;
- const msg=document.getElementById("regMsg");
-
- if(!name||!email||!pass||!confirm){
-  msg.style.color="#facc15";
-  msg.innerText="All fields required";
-  return;
- }
-
- if(pass!==confirm){
-  msg.style.color="#ef4444";
-  msg.innerText="Passwords not match";
-  return;
- }
-
- let users=getUsers();
- if(users.find(u=>u.email===email)){
-  msg.style.color="#ef4444";
-  msg.innerText="User already exists";
-  return;
- }
-
- users.push({name,email,password:pass});
- saveUsers(users);
-
- msg.style.color="#22d3ee";
- msg.innerText="Registration successful. Login now.";
- setTimeout(showLogin,1000);
-}
-
-/* ================= LOGIN ================= */
-function login(){
- const email=document.getElementById("loginEmail").value.trim();
- const pass=document.getElementById("loginPassword").value;
- const msg=document.getElementById("loginMsg");
-
- let users=getUsers();
- let user=users.find(u=>u.email===email && u.password===pass);
-
- if(!user){
-  msg.style.color="#ef4444";
-  msg.innerText="Invalid email or password";
-  return;
- }
-
- localStorage.setItem("ai_session",JSON.stringify(user));
- msg.style.color="#22d3ee";
- msg.innerText="Login successful";
-
- showApp();
-}
-
-/* ================= PROFILE INITIALS ================= */
-function getInitials(name){
- if(!name) return "U";
- let parts=name.trim().split(" ");
- if(parts.length===1) return parts[0][0].toUpperCase();
- return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
-}
-
-function toggleProfile(){
- document.getElementById("profileDropdown").classList.toggle("hidden");
-}
-
-document.addEventListener("click",function(e){
- const icon=document.getElementById("profileIcon");
- const drop=document.getElementById("profileDropdown");
- if(icon && drop && !icon.contains(e.target) && !drop.contains(e.target)){
-   drop.classList.add("hidden");
- }
-});
-
-/* ================= SESSION ================= */
-function showApp(){
- const session=JSON.parse(localStorage.getItem("ai_session"));
- if(!session) return;
-
- document.getElementById("authPage").style.display="none";
- document.getElementById("appPage").style.display="block";
-
- document.getElementById("profileIcon").innerText=getInitials(session.name);
- document.getElementById("pdName").innerText=session.name;
- document.getElementById("pdEmail").innerText=session.email;
-}
-
-/* ================= LOGOUT ================= */
-function logout(){
- localStorage.removeItem("ai_session");
- document.getElementById("appPage").style.display="none";
- document.getElementById("authPage").style.display="flex";
-}
-
-/* ================= AUTO LOGIN ================= */
-const session=localStorage.getItem("ai_session");
-if(session){
- showApp();
-}
-
-
-/* ===== FILE INPUT LAYER (NEW – SAFE) ===== */
-const fileInputEl = document.getElementById("fileInput");
-
-/* ===== PDF WORKER FIX ===== */
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
-  
-   src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"
-
-/* ===== FILE INPUT LAYER (SAFE FIX) ===== */
-fileInputEl.addEventListener("change", async function(){
- const file = this.files[0];
- if(!file) return;
- const ext = file.name.split(".").pop().toLowerCase();
-
- /* TXT */
- if(ext === "txt"){
-   input.value = await file.text();
- }
- /* IMAGE OCR */
-if(ext === "jpg" || ext === "jpeg" || ext === "png"){
-
-  if(typeof Tesseract === "undefined"){
-    alert("OCR library not loaded. Connect internet and reload file.");
-    return;
-  }
-
-  input.value = "⏳ Reading image using OCR...";
-
-  const r = new FileReader();
-  r.onload = async ()=>{
-    try{
-      const result = await Tesseract.recognize(
-        r.result,
-        "eng",
-        { logger: m => console.log(m) }
-      );
-      input.value = result.data.text;
-    }catch(e){
-      alert("OCR failed: " + e.message);
-    }
-  };
-  r.readAsDataURL(file);
-}
- /* PDF */
- if(ext === "pdf"){
-   const r = new FileReader();
-   r.onload = async ()=>{
-     const pdf = await pdfjsLib.getDocument({data:r.result}).promise;
-     let t="";
-     for(let i=1;i<=pdf.numPages;i++){
-       const p = await pdf.getPage(i);
-       const c = await p.getTextContent();
-       t += c.items.map(x=>x.str).join(" ") + " ";
-     }
-     input.value = t;
-   };
-   r.readAsArrayBuffer(file);
- }
-
- /* DOCX */
- if(ext === "docx"){
-   const r = new FileReader();
-   r.onload = ()=>{
-     mammoth.extractRawText({arrayBuffer:r.result})
-     .then(x=> input.value = x.value);
-   };
-   r.readAsArrayBuffer(file);
- }
-});
-
-
-/* ===== AI LOGIC (UNCHANGED) ===== */
-let data={}, used=new Set();
-
-function add(field,value){
- value=value.trim();
- if(!value || used.has(field+value)) return;
- data[field]=data[field]||[];
- data[field].push(value);
- used.add(field+value);
-}
-
-function analyze(){
-
-/* ===========================
-   🔹 LAYER 2 – SMART EXTENSION
-   (DO NOT REMOVE LAYER 1)
-=========================== */
-
-function layer2Enhancement(originalText) {
-
-  const stopWords = [
-    "met","with","and","or","at","on","in",
-    "yesterday","today","tomorrow",
-    "is","was","were","the","a","an"
-  ];
-
-  /* -------- MULTIPLE PEOPLE (FULL NAMES) -------- */
-  let words = originalText
-    .replace(/[^A-Za-z ]/g," ")
-    .split(/\s+/);
-
-  for (let i = 0; i < words.length; i++) {
-    let w1 = words[i];
-    let w2 = words[i + 1];
-
-    if (
-      /^[A-Z][a-z]+$/.test(w1) &&
-      !stopWords.includes(w1.toLowerCase())
-    ) {
-      if (
-        w2 &&
-        /^[A-Z][a-z]+$/.test(w2) &&
-        !stopWords.includes(w2.toLowerCase())
-      ) {
-        add("Name", w1 + " " + w2);
-        i++;
-      } else {
-        add("Name", w1);
-      }
-    }
-  }
-
-  /* -------- DATES (MULTIPLE) -------- */
-  originalText
-    .match(/\b\d{2}\/\d{2}\/\d{4}\b/g)
-    ?.forEach(d => add("Date", d));
-
-  /* -------- QUANTITY -------- */
-  originalText
-    .match(/\b\d+\s?(kg|kgs|pcs|pieces|items)\b/gi)
-    ?.forEach(q => add("Quantity", q));
-
-  /* -------- PRICE -------- */
-  originalText
-    .match(/price\s?\d+/gi)
-    ?.forEach(p => add("Price", p.match(/\d+/)[0]));
-
-  /* -------- SALARY / AMOUNT MULTI -------- */
-  originalText
-    .match(/salary\s?\d+/gi)
-    ?.forEach(s => add("Salary", s.match(/\d+/)[0]));
-
-  originalText
-    .match(/amount\s?\d+/gi)
-    ?.forEach(a => add("Amount", a.match(/\d+/)[0]));
-
-  /* -------- PRODUCTS (SAFE EXTEND) -------- */
-  ["laptop","mobile phone","mobile","printer","scanner"]
-    .forEach(p => {
-      if (originalText.toLowerCase().includes(p)) {
-        add("Product Name", p);
-      }
-    });
-}
-
- data={}; used.clear();
- let t=input.value.toLowerCase();
-
- let nameBlock=t.match(/my name is ([a-z ,]+)/);
- if(nameBlock){ nameBlock[1].split(",").forEach(n=>add("Name",n)); }
-
- let refBlock=t.match(/reference name is ([a-z ,]+)/);
- if(refBlock){ refBlock[1].split(",").forEach(n=>add("Reference Name",n)); }
-
- t.match(/\b(\d{1,2})\s*years\b/g)
- ?.forEach(v=>add("Age",v.match(/\d+/)[0]));
-
- t.match(/\bmale\b|\bfemale\b/g)?.forEach(v=>add("Gender",v));
- t.match(/\b\d{10}\b/g)?.forEach(v=>add("Phone",v));
-
- let alt=t.match(/alternate phone.*?(\d{10})/);
- if(alt) add("Alternate Phone",alt[1]);
-
- t.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/g)
- ?.forEach(v=>add("Email",v));
-
- let addr=t.match(/(live at|address is|residing at)\s([^\.]+)/);
- if(addr) add("Address",addr[2]);
-
- if(t.includes("chennai")) add("City","chennai");
- if(t.includes("tamil nadu")) add("State","tamil nadu");
- if(t.includes("india")) add("Country","india");
-
- t.match(/(pincode|pin code)\s*(\d{6})/g)
- ?.forEach(v=>add("Pincode",v.match(/\d{6}/)[0]));
-
- t.match(/salary\s(\d{4,})/g)
- ?.forEach(v=>add("Salary",v.match(/\d+/)[0]));
-
- t.match(/amount.*?(\d{3,})/g)
- ?.forEach(v=>add("Amount",v.match(/\d+/)[0]));
-}
-/* ===== END AI LOGIC ===== */
-function runAnalysis() {
-   analyze();          // existing Layer-1
-   layer2Enhancement(input.value); // 🔹 NEW Layer-2
-   render();           // existing render
-}
-
-function runAnalysis(){
- analyze();
- render();
- detectConflicts();
- saveHistory();
-}
-
-function render(){
- result.innerHTML="";
- Object.keys(data).forEach(f=>{
-  result.innerHTML+=`<tr><td>${f}</td><td>${data[f].join(", ")}</td></tr>`;
- });
-}
-
-function detectConflicts(){
- conflicts.innerHTML="";
- if(data["Salary"] && data["Amount"])
-  conflicts.innerHTML="⚠ Possible conflict: Salary & Amount both detected";
-}
-
-function addCustom(){
- let f=customField.value.trim();
- let v=customValue.value.trim();
- if(!f||!v) return;
- data[f]=data[f]||[];
- data[f].push(v);
- render();
- customList.innerHTML+=`<span class="badge">${f}: ${v}</span>`;
-}
-
-
-
-
-function detectConflicts(){
- conflicts.innerHTML="";
- if(data["Salary"] && data["Amount"])
-  conflicts.innerHTML="⚠ Possible conflict: Salary & Amount both detected";
-}
-
-function addCustom(){
- let f=customField.value.trim();
- let v=customValue.value.trim();
- if(!f||!v) return;
- data[f]=data[f]||[];
- data[f].push(v);
- render();
- customList.innerHTML+=`<span class="badge">${f}: ${v}</span>`;
-}
-
-
-
-function getUsers(){
- return JSON.parse(localStorage.getItem("ai_users")||"[]");
-}
-function saveUsers(users){
- localStorage.setItem("ai_users",JSON.stringify(users));
-}
-
-
-function saveHistory(){
- let h=JSON.parse(localStorage.getItem("ai_history")||"[]");
- h.unshift({text:input.value,time:new Date().toLocaleString()});
- h=h.slice(0,10);
- localStorage.setItem("ai_history",JSON.stringify(h));
- loadHistory();
-}
-
-function loadHistory(){
- let h=JSON.parse(localStorage.getItem("ai_history")||"[]");
- history.innerHTML="";
- h.forEach(i=>{
-  history.innerHTML+=`<div class="history-item" onclick="input.value=\`${i.text}\`">
-  ${i.time}</div>`;
- });
-}
-
-function exportExcel(){
- let rows=[];
- Object.keys(data).forEach(f=>{
-  data[f].forEach(v=>rows.push({Field:f,Value:v}));
- });
- let wb=XLSX.utils.book_new();
- let ws=XLSX.utils.json_to_sheet(rows);
- XLSX.utils.book_append_sheet(wb,ws,"AI Data");
- XLSX.writeFile(wb,"AI_Data.xlsx");
-}
-
-function clearAll(){
- input.value="";
- result.innerHTML="";
-}
-
-input.value=localStorage.getItem("autosave")||"";
-input.oninput=()=>localStorage.setItem("autosave",input.value);
-loadHistory();
-
-
-/* ================= DATABASE EXTRACTION LAYER (ADD-ON) ================= */
-
-/*
- This layer:
- - Reads uploaded file text
- - Detects structured patterns
- - Extracts DB-style data
- - Pushes into existing table display
- - DOES NOT touch existing AI logic
-*/
-
-function extractDatabaseFromText(rawText){
-  let dbData = {};
-
-  let lines = rawText.split(/\n+/);
-
-  lines.forEach(line=>{
-    line = line.trim();
-    if(!line) return;
-
-    /* Key : Value */
-    if(line.includes(":")){
-      let parts = line.split(":");
-      let key = parts.shift().trim();
-      let value = parts.join(":").trim();
-      if(key && value){
-        dbData[key] = dbData[key] || [];
-        dbData[key].push(value);
-      }
-    }
-
-    /* Key = Value */
-    if(line.includes("=")){
-      let parts = line.split("=");
-      let key = parts.shift().trim();
-      let value = parts.join("=").trim();
-      if(key && value){
-        dbData[key] = dbData[key] || [];
-        dbData[key].push(value);
-      }
-    }
-
-    /* CSV pattern */
-    if(line.includes(",") && line.split(",").length >= 3){
-      let parts = line.split(",").map(x=>x.trim());
-      parts.forEach((v,i)=>{
-        let key = "Column_" + (i+1);
-        dbData[key] = dbData[key] || [];
-        dbData[key].push(v);
-      });
-    }
-
-    /* Tabular pattern */
-    if(line.includes("\t")){
-      let parts = line.split("\t").map(x=>x.trim());
-      parts.forEach((v,i)=>{
-        let key = "Field_" + (i+1);
-        dbData[key] = dbData[key] || [];
-        dbData[key].push(v);
-      });
-    }
-  });
-
-  return dbData;
-}
-
-
-/* ===== AUTO HOOK INTO FILE INPUT ===== */
-const originalFileHandler = fileInput.onchange;
-
-fileInput.onchange = async function(){
-  if(originalFileHandler) await originalFileHandler.call(this);
-
-  // after original file read
-  setTimeout(()=>{
-    if(input.value && input.value.length > 20){
-      let db = extractDatabaseFromText(input.value);
-
-      // inject into existing data object safely
-      if(typeof data === "object"){
-        Object.keys(db).forEach(k=>{
-          data[k] = data[k] || [];
-          db[k].forEach(v=>data[k].push(v));
+    <div id="appPage" class="hidden max-w-7xl mx-auto py-4">
+        <header class="flex justify-between items-center mb-8 relative">
+            <div class="flex items-center gap-2">
+                <i data-lucide="shield-check" class="text-cyan-400"></i>
+                <span class="text-xl font-bold tracking-tight">AI Data Worker</span>
+            </div>
+
+            <div class="relative">
+                <button onclick="toggleDropdown()" id="profileIcon" class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-400 to-blue-600 text-black font-bold flex items-center justify-center shadow-lg cursor-pointer">
+                    U
+                </button>
+                
+                <div id="profileDropdown" class="profile-dropdown hidden p-4">
+                    <div class="text-sm font-bold text-white mb-1" id="pdName">Name</div>
+                    <div class="text-[10px] text-slate-400 break-all mb-4" id="pdEmail">email@example.com</div>
+                    <hr class="border-white/10 mb-3">
+                    <button onclick="logout()" class="w-full bg-red-500/10 text-red-400 py-2 rounded-lg text-xs font-bold hover:bg-red-500/20">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-5 space-y-6">
+                <div class="glass-card p-6">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Input Data / Upload Image</label>
+                    <input type="file" id="fileInput" class="hidden" accept="image/*,.txt,.pdf">
+                    <label for="fileInput" class="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-2xl p-6 cursor-pointer hover:border-cyan-400/30 transition-all mb-4">
+                        <i data-lucide="upload-cloud" class="text-slate-500 mb-2"></i>
+                        <span class="text-xs text-slate-400">Click to upload Document/Image</span>
+                    </label>
+
+                    <div id="ocrStatus" class="hidden text-center text-cyan-400 text-xs mb-2 animate-pulse font-bold">Scanning text with OCR...</div>
+                    <textarea id="mainInput" class="apple-input w-full h-80 p-4 text-sm resize-none" placeholder="Paste your data here..."></textarea>
+                    
+                    <div class="grid grid-cols-2 gap-3 mt-4">
+                        <button onclick="runAnalysis()" class="btn-primary py-3 flex items-center justify-center gap-2">
+                            <i data-lucide="sparkles" size="16"></i> Analyze
+                        </button>
+                        <button onclick="clearAll()" class="apple-input hover:bg-white/5 flex items-center justify-center gap-2">
+                            <i data-lucide="refresh-cw" size="16"></i> Clear
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass-card p-6">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><i data-lucide="clock" size="14"></i> Recent Analysis</h3>
+                    <div id="historyList" class="space-y-2 max-h-32 overflow-y-auto pr-2"></div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-7 space-y-6">
+                <div class="glass-card p-6 min-h-[600px] flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-cyan-400 flex items-center gap-2">
+                            <i data-lucide="layout-list" size="18"></i> Extracted Insights
+                        </h3>
+                        <button onclick="exportExcel()" class="text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-4 py-2 rounded-xl hover:bg-green-500/20">Export Excel</button>
+                    </div>
+
+                    <div class="flex-grow overflow-x-auto rounded-xl border border-white/5">
+                        <table class="w-full text-sm">
+                            <thead class="bg-white/5 text-[10px] text-slate-500 uppercase tracking-widest font-black">
+                                <tr>
+                                    <th class="px-6 py-4">Category</th>
+                                    <th class="px-6 py-4">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultBody" class="divide-y divide-white/5">
+                                <tr><td colspan="2" class="py-20 text-center text-slate-600 italic">No data extracted yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-8 pt-6 border-t border-white/10 grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <input id="cfKey" class="apple-input p-2 text-xs" placeholder="Field (e.g. Note)">
+                        <input id="cfVal" class="apple-input p-2 text-xs" placeholder="Value">
+                        <button onclick="addCustom()" class="bg-white/5 hover:bg-white/10 p-2 rounded-lg text-xs font-bold">Add Custom</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-4 left-6 text-[10px] font-bold text-slate-700 tracking-[0.2em] pointer-events-none uppercase">Powered by KD AI System</div>
+    <div class="fixed bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-slate-600 pointer-events-none">© 2026 KD AI Automated Data Worker. All rights reserved.</div>
+
+    <script>
+        lucide.createIcons();
+
+        let isLoginMode = true;
+        let dataStore = {};
+
+        // --- AUTH LOGIC ---
+        function toggleAuth() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('authTitle').innerText = isLoginMode ? "Secure Access" : "Register System";
+            document.getElementById('regFields').classList.toggle('hidden', isLoginMode);
+            document.getElementById('authBtn').innerText = isLoginMode ? "Sign In" : "Register Now";
+            document.getElementById('authMsg').innerText = isLoginMode ? "New user?" : "Existing user?";
+            document.getElementById('authToggle').innerText = isLoginMode ? "Create Account" : "Login";
+        }
+
+        function handleAuth() {
+            const email = document.getElementById('authEmail').value;
+            const name = document.getElementById('regName').value || email.split('@')[0];
+            if(!email) return alert("Please enter email");
+            
+            localStorage.setItem('ai_session', JSON.stringify({ name, email }));
+            checkSession();
+        }
+
+        function checkSession() {
+            const session = JSON.parse(localStorage.getItem('ai_session'));
+            if(session) {
+                document.getElementById('authPage').classList.add('hidden');
+                document.getElementById('appPage').classList.remove('hidden');
+                document.getElementById('pdName').innerText = session.name;
+                document.getElementById('pdEmail').innerText = session.email;
+                document.getElementById('profileIcon').innerText = session.name.charAt(0).toUpperCase();
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('ai_session');
+            location.reload();
+        }
+
+        function toggleDropdown() {
+            document.getElementById('profileDropdown').classList.toggle('hidden');
+        }
+
+        // --- FILE & OCR LOGIC ---
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+
+            if(file.type.startsWith('image/')) {
+                document.getElementById('ocrStatus').classList.remove('hidden');
+                const result = await Tesseract.recognize(file, 'eng');
+                document.getElementById('mainInput').value = result.data.text;
+                document.getElementById('ocrStatus').classList.add('hidden');
+            } else {
+                const reader = new FileReader();
+                reader.onload = (ev) => document.getElementById('mainInput').value = ev.target.result;
+                reader.readAsText(file);
+            }
         });
 
-        // render using existing renderer
-        if(typeof render === "function"){
-          render();
+        // --- SMART EXTRACTION LOGIC (Universal & Domain Strong) ---
+        function runAnalysis() {
+            const text = document.getElementById('mainInput').value;
+            if(!text) return;
+
+            dataStore = {};
+
+            // 1. HUMAN NAME LOGIC (Filtering out noise)
+            const stopWords = ['chennai', 'india', 'office', 'company', 'street', 'road', 'nagar'];
+            const names = text.match(/(?:name is|reference name is|person involved is|met)\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)/gi);
+            if(names) {
+                names.forEach(n => {
+                    let val = n.replace(/name is|reference name is|person involved is|met/i, '').trim();
+                    if(!stopWords.includes(val.toLowerCase())) addData("Human Names", val);
+                });
+            }
+
+            // 2. UNIVERSAL KEY-VALUE EXTRACTION (Key: Value or Key is Value)
+            const lines = text.split('\n');
+            lines.forEach(line => {
+                if(line.includes(':') || line.toLowerCase().includes(' is ')) {
+                    let parts = line.includes(':') ? line.split(':') : line.split(/ is /i);
+                    let key = parts[0].trim();
+                    let val = parts[1].trim();
+                    
+                    // Filter: If key is "City" or "State", don't put in Name field
+                    if(key.length < 25 && val.length < 100) {
+                        addData(key, val);
+                    }
+                }
+            });
+
+            // 3. REGEX PATTERNS (Strong Backup)
+            const patterns = {
+                "Emails": /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+                "Contacts": /\b\d{10}\b/g,
+                "Currencies": /(?:rs|inr|salary|amount|price)\.?\s?\d+/gi,
+                "Pincode": /\b\d{6}\b/g,
+                "Dates": /\b\d{2}\/\d{2}\/\d{4}\b/g
+            };
+
+            Object.keys(patterns).forEach(k => {
+                const matches = text.match(patterns[k]);
+                if(matches) matches.forEach(m => addData(k, m.trim()));
+            });
+
+            renderTable();
+            saveHistory(text);
         }
-      }
-    }
-  },300);
-};
 
-/* ================= END DATABASE EXTRACTION LAYER ================= */
+        function addData(k, v) {
+            k = k.charAt(0).toUpperCase() + k.slice(1).toLowerCase();
+            if(!dataStore[k]) dataStore[k] = [];
+            if(!dataStore[k].includes(v)) dataStore[k].push(v);
+        }
 
-</script>
+        function renderTable() {
+            const body = document.getElementById('resultBody');
+            body.innerHTML = "";
+            
+            Object.keys(dataStore).forEach(k => {
+                const row = `<tr class="hover:bg-white/5 transition-all">
+                    <td class="px-6 py-4 font-bold text-cyan-400">${k}</td>
+                    <td class="px-6 py-4">
+                        ${dataStore[k].map(val => `<span class="inline-block bg-white/10 px-3 py-1 rounded-lg mr-2 mb-1 text-xs border border-white/5">${val}</span>`).join('')}
+                    </td>
+                </tr>`;
+                body.innerHTML += row;
+            });
+        }
 
-<div class="kd-watermark">
-  Powered by KD
-</div>
+        function saveHistory(text) {
+            const historyList = document.getElementById('historyList');
+            const item = document.createElement('div');
+            item.className = "p-3 bg-white/5 rounded-xl text-[10px] text-slate-400 flex justify-between cursor-pointer hover:bg-white/10";
+            item.innerHTML = `<span>${text.substring(0, 40)}...</span> <span>${new Date().toLocaleTimeString()}</span>`;
+            item.onclick = () => { document.getElementById('mainInput').value = text; runAnalysis(); };
+            historyList.prepend(item);
+        }
 
-<div class="copyright-text">
-  © 2026 KD AI Data Entry Application. All rights reserved.
-</div>
+        function exportExcel() {
+            const rows = [];
+            Object.keys(dataStore).forEach(k => {
+                dataStore[k].forEach(v => rows.push({ Category: k, Value: v }));
+            });
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "AI_Export");
+            XLSX.writeFile(wb, "AI_Data_Worker_Report.xlsx");
+        }
 
+        function addCustom() {
+            const k = document.getElementById('cfKey').value;
+            const v = document.getElementById('cfVal').value;
+            if(k && v) { addData(k, v); renderTable(); }
+        }
+
+        function clearAll() {
+            document.getElementById('mainInput').value = "";
+            dataStore = {};
+            renderTable();
+        }
+
+        // Auto-save input
+        document.getElementById('mainInput').oninput = (e) => localStorage.setItem('auto_save_val', e.target.value);
+        window.onload = () => {
+            checkSession();
+            document.getElementById('mainInput').value = localStorage.getItem('auto_save_val') || "";
+        }
+    </script>
 </body>
 </html>
